@@ -12,3 +12,8 @@ O arquivo deve ser compilado como:
 
 **in.txt** é um exemplo de entrada que deve ser executado da seguinte maneira:
 **./src/main < in.txt**
+
+* o sistema aceita nomes de incognita como letras do alfabeto latino (a, b, ... ,z)
+* ou variaveis indexadas de 0 a 99 (c, c0, c1, ... c11,..., c99)
+* as variaveis nao precisam ser colocadas na mesma ordem em cada equação
+* a cada equação podem surgir novas variaveis ou não
