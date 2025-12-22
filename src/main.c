@@ -1,9 +1,7 @@
 #include <stdio.h>
 #include "generic_matrix/Matrix.h"
 #include "generic_vector/vector.h"
-#include "generic_stack/stack.h"
-#include "hash_term.h"
-#include "mergesort.h"
+#include "hash.h"
 #include <ctype.h>
 
 #define INPUT_BUFFER_SIZE 1024
