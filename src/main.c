@@ -46,15 +46,22 @@ int setargs(int argc, const char* argv[], PPLSolution_t* vbn, int* solve_sistem)
     return 1;
 }
 
-int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn){
+int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn, hash_table* ht){
     if(n_x == 0){
         printf("Sistema sem soluções basicas viáveis\n");
         return 0;
     }
-
-    printf("%d\n", n_x);
-    for(int i = 0; i < n_x; i++)
-        cM(x[i], print);
+    
+    size_t m = x[0]->rows;
+    
+    for(int i = 0; i < n_x; i++){
+        for(size_t j = 0; j < m; j++){
+            char name[SIZE_KEY + 1] = {0};
+            get_key(ht, dp->data[j], name);
+            printf("%s = %.2lf\n", name, x[i]->data[j]);
+        }
+        putchar('\n');
+    }
     
     if(vbn)
         printf("numero de soluções básicas viáveis: %zu\n", n_x);
@@ -96,7 +103,7 @@ int main(int argc, const char* argv[]){
     size_t n_x;
     
     cmatrix_error err = generate_all_BS(&x, &n_x, Ab, vbn);
-    print_basic_solutions(x, n_x, vbn);
+    print_basic_solutions(x, n_x, vbn, &table);
     
     for(int i = 0; i < n_x; i++) cM(x[i], free);
     free(x);
