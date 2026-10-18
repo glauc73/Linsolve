@@ -1,4 +1,4 @@
-# Solve Linear System
+#Linsolve
 
 Uma calculadora de sistemas lineares escrita em C, do zero — sem bibliotecas externas.
 
