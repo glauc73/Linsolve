@@ -679,10 +679,13 @@ static inline cmatrix_error CONCAT(RREF_, MATRIX_TYPE)(MATRIX_TYPE** self, const
         if(j == (*self)->cols) continue;
 
         double pivot = (*self)->at[i][j];
-        CONCAT(mul_row_, MATRIX_TYPE)(*self, i, 1/pivot); //transforma cada pivo em 1 dividindo a linha por pivot
-        
-        fprintf(step_file, "( L%d <- (1/%+.3lf)*L%d )\n\n", i + 1, pivot, i + 1);
-        cM(*self, fprint, step_file);
+        if(!equal(pivot, 1)){
+            CONCAT(mul_row_, MATRIX_TYPE)(*self, i, 1/pivot);
+            if(step_file){
+                fprintf(step_file, "( L%d <- (1/%+.3lf)*L%d )\n\n", (int)i + 1, pivot, (int)i + 1);
+                cM(*self, fprint, step_file);
+            }
+        }
 
         for(int k = i - 1; k >= 0; k--){
             GENERICS_TYPE akj = (*self)->at[k][j];
