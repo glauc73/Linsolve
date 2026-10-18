@@ -13,7 +13,7 @@ A outra parte interessante é o parser. Você escreve as equações do jeito que
 ## Compilando
 
 ```bash
-gcc -std=c11 src/main.c -Iinclude -o main
+gcc -std=c11 src/linsolve.c -Iinclude -o linsolve
 ```
 
 Ou use o script que já está no repositório:
@@ -35,9 +35,9 @@ O programa **exige** exatamente uma flag. Chamado sem nenhuma — ou com algo qu
 | `-sbv` | Gera apenas as **soluções básicas viáveis** (as de componentes não-negativas). |
 
 ```bash
-./main -s   < in.txt
-./main -sb  < in.txt
-./main -sbv < in.txt
+./linsolve -s   < in.txt
+./linsolve -sb  < in.txt
+./linsolve -sbv < in.txt
 ```
 
 ---
@@ -52,7 +52,7 @@ A entrada tem duas partes, nesta ordem:
 Rodando interativamente o programa te guia:
 
 ```
-$ ./main -s
+$ ./linsolve -s
 informe o numero de equações e de variaveis
 3 3
 informe o sistema:
