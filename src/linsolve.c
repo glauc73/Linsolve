@@ -73,12 +73,13 @@ int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn, has
 int main(int argc, const char* argv[]){
     int solve;
     PPLSolution_t vbn;
+    dp = new_vector_int(0); //guarda os hashs das variaveis distintas da matriz inteira
+    hash_table table = new_hash_table();
+    
     if(!setargs(argc, argv, &vbn, &solve)) goto fim;
     
     size_t m, n;
     char input[INPUT_BUFFER_SIZE];
-    hash_table table = new_hash_table();
-    dp = new_vector_int(0); //guarda os hashs das variaveis distintas da matriz inteira
 
     printf("informe o numero de equações e de variaveis\n");
     scanf("%zu %zu", &m, &n);
@@ -96,6 +97,7 @@ int main(int argc, const char* argv[]){
     if(solve){
         cM(Ab, rref, Ab);
         print_solution(Ab, &table);
+        cM(Ab, free);
         goto fim;
     }
 
@@ -107,8 +109,8 @@ int main(int argc, const char* argv[]){
     
     for(int i = 0; i < n_x; i++) cM(x[i], free);
     free(x);
-fim:
     cM(Ab, free);
+fim:
     delete_hash_table(&table);
     dp->free(&dp);
     return 0;
