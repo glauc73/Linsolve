@@ -148,7 +148,7 @@ Se nenhuma sobreviver ao filtro, ele diz que o sistema não tem soluções bási
 
 ## Como o código está organizado
 
-O `main.c` fica em `src/`. Todo o resto são headers próprios em `include/`:
+O `linsolve.c` fica em `src/`. Todo o resto são headers próprios em `include/`:
 
 | Módulo                        | Papel                                                                 |
 |-------------------------------|-----------------------------------------------------------------------|
