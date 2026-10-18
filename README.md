@@ -1,10 +1,12 @@
-## Linsolve
+# Linsolve
 
 Uma calculadora de sistemas lineares escrita em C, do zero — sem bibliotecas externas.
 
 Você escreve as equações, o programa resolve e te diz o que aconteceu: se existe uma única solução, ele mostra os valores; se existem infinitas, ele mostra como elas são parametrizadas; e se não existe nenhuma, ele avisa.
 
 Mas ele vai além disso. Com outra flag, em vez de resolver o sistema ele **enumera todas as soluções básicas** — e, se você pedir, só as **básicas viáveis**. Isso é o ferramental de programação linear: as soluções básicas viáveis são exatamente os vértices da região factível, e é entre elas que mora o ótimo de um PPL.
+
+Em qualquer um dos modos, o programa também registra o **passo a passo** da resolução no arquivo `steps.txt`, para você conferir como ele chegou ao resultado.
 
 A outra parte interessante é o parser. Você escreve as equações do jeito que quiser, misturando a ordem das variáveis e introduzindo variáveis novas no meio do sistema, e ele se vira.
 
@@ -28,16 +30,35 @@ bash build.sh
 
 O programa **exige** exatamente uma flag. Chamado sem nenhuma — ou com algo que ele não reconhece — ele imprime as opções disponíveis e encerra.
 
-| Flag   | O que faz                                                                   |
-|--------|------------------------------------------------------------------------------|
+| Flag   | O que faz                                                                                              |
+| ------ | ------------------------------------------------------------------------------------------------------ |
 | `-s`   | Resolve o sistema. Reduz a matriz aumentada à forma escalonada reduzida (RREF) e classifica a solução. |
-| `-sb`  | Gera todas as **soluções básicas** do sistema.                               |
-| `-sbv` | Gera apenas as **soluções básicas viáveis** (as de componentes não-negativas). |
+| `-sb`  | Gera todas as **soluções básicas** do sistema.                                                         |
+| `-sbv` | Gera apenas as **soluções básicas viáveis** (as de componentes não-negativas).                         |
 
 ```bash
 ./linsolve -s   < in.txt
 ./linsolve -sb  < in.txt
 ./linsolve -sbv < in.txt
+```
+
+---
+
+## O passo a passo: `steps.txt`
+
+Resolver um sistema à mão é fácil de errar, e uma resposta sem caminho é difícil de confiar. Por isso, ao rodar com `-s`, `-sb` ou `-sbv`, o programa guarda em **`steps.txt`** o passo a passo da resolução daquele modo.
+
+| Flag   | O que `steps.txt` registra                                  |
+| ------ | ----------------------------------------------------------- |
+| `-s`   | O passo a passo da resolução do sistema                     |
+| `-sb`  | O passo a passo da obtenção das soluções básicas            |
+| `-sbv` | O passo a passo da obtenção das soluções básicas viáveis    |
+
+O terminal mostra o resultado; o `steps.txt` mostra como se chegou nele. É útil para estudar o método, conferir um exercício feito no papel ou depurar o próprio programa.
+
+```bash
+./linsolve -s < in.txt
+cat steps.txt
 ```
 
 ---
@@ -73,10 +94,10 @@ x - y + 2z = 3
 
 ### Nomes de variáveis
 
-| Forma               | Exemplos                      |
-|---------------------|-------------------------------|
-| Letras soltas       | `a`, `b`, `x`, `y`, `z`       |
-| Indexadas, 0 a 99   | `c0`, `c1`, `c11`, ..., `c99` |
+| Forma             | Exemplos                      |
+| ----------------- | ----------------------------- |
+| Letras soltas     | `a`, `b`, `x`, `y`, `z`       |
+| Indexadas, 0 a 99 | `c0`, `c1`, `c11`, ..., `c99` |
 
 ### Você não precisa ser organizado
 
@@ -150,15 +171,15 @@ Se nenhuma sobreviver ao filtro, ele diz que o sistema não tem soluções bási
 
 O `linsolve.c` fica em `src/`. Todo o resto são headers próprios em `include/`:
 
-| Módulo                        | Papel                                                                 |
-|-------------------------------|-----------------------------------------------------------------------|
-| `genericsBase.h`              | A base de tudo: a maquinaria de tipos genéricos que os outros módulos usam, para que as estruturas não fiquem presas a um tipo específico. |
-| `generic_vector/vector.h`     | TAD de vetor dinâmico genérico — `pushback`, `len`, `sort` e companhia. |
-| `generic_matrix/cMatrix.h`    | Matrizes genéricas, com operações como `rref`. É aqui que a matriz aumentada vive e é reduzida. |
-| `hash.h`                      | Hash table perfeita que mapeia nome de variável para coluna da matriz. |
-| `parse.h`                     | Lê uma linha de texto e a transforma em uma linha da matriz aumentada. |
-| `consistency.h`               | Classifica o sistema após a redução e imprime a solução.              |
-| `basicSolutions.h`            | Enumera as soluções básicas e filtra as viáveis.                      |
+| Módulo                     | Papel                                                                                                                                      |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `genericsBase.h`           | A base de tudo: a maquinaria de tipos genéricos que os outros módulos usam, para que as estruturas não fiquem presas a um tipo específico. |
+| `generic_vector/vector.h`  | TAD de vetor dinâmico genérico — `pushback`, `len`, `sort` e companhia.                                                                    |
+| `generic_matrix/cMatrix.h` | Matrizes genéricas, com operações como `rref`. É aqui que a matriz aumentada vive e é reduzida.                                            |
+| `hash.h`                   | Hash table perfeita que mapeia nome de variável para coluna da matriz.                                                                     |
+| `parse.h`                  | Lê uma linha de texto e a transforma em uma linha da matriz aumentada.                                                                     |
+| `consistency.h`            | Classifica o sistema após a redução e imprime a solução.                                                                                   |
+| `basicSolutions.h`         | Enumera as soluções básicas e filtra as viáveis.                                                                                           |
 
 A hash table é o que permite escrever as equações fora de ordem: quando o parser encontra `z`, consulta a tabela e descobre em que coluna aquele termo deve ser somado — criando a coluna na hora, se for a primeira vez que aquela variável aparece.
 
