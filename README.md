@@ -15,13 +15,13 @@ A outra parte interessante é o parser. Você escreve as equações do jeito que
 ## Compilando
 
 ```bash
-gcc -std=c11 src/linsolve.c -Iinclude -o linsolve
+gcc -std=c11 src/linsolve.c -Iinclude -o bin/linsolve
 ```
 
 Ou use o script que já está no repositório:
 
 ```bash
-bash build.sh
+bash ./bin/build.sh
 ```
 
 ---
@@ -37,9 +37,9 @@ O programa **exige** exatamente uma flag. Chamado sem nenhuma — ou com algo qu
 | `-sbv` | Gera apenas as **soluções básicas viáveis** (as de componentes não-negativas).                         |
 
 ```bash
-./linsolve -s   < in.txt
-./linsolve -sb  < in.txt
-./linsolve -sbv < in.txt
+./bin/linsolve -s   < in.txt
+./bin/linsolve -sb  < in.txt
+./bin/linsolve -sbv < in.txt
 ```
 
 ---
@@ -57,7 +57,7 @@ Resolver um sistema à mão é fácil de errar, e uma resposta sem caminho é di
 O terminal mostra o resultado; o `steps.txt` mostra como se chegou nele. É útil para estudar o método, conferir um exercício feito no papel ou depurar o próprio programa.
 
 ```bash
-./linsolve -s < in.txt
+./bin/linsolve -s < in.txt
 cat steps.txt
 ```
 
@@ -73,7 +73,7 @@ A entrada tem duas partes, nesta ordem:
 Rodando interativamente o programa te guia:
 
 ```
-$ ./linsolve -s
+$ ./bin/linsolve -s
 informe o numero de equações e de variaveis
 3 3
 informe o sistema:
