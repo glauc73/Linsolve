@@ -529,7 +529,7 @@ static inline cmatrix_error CONCAT(REF_, MATRIX_TYPE)(MATRIX_TYPE** self, const 
         if(i != i0){
             cM(*self, swapRows, i0, i);
             if(step_file)
-                fprintf(step_file, "L%d <-> L%d\n\n", i0 + 1, i + 1);
+                fprintf(step_file, "( L%d <-> L%d )\n\n", i0 + 1, i + 1);
             cM(*self, fprint, step_file);
         }
     
@@ -541,7 +541,7 @@ static inline cmatrix_error CONCAT(REF_, MATRIX_TYPE)(MATRIX_TYPE** self, const 
                 CONCAT(mul_row_, MATRIX_TYPE)(*self, i, pivot); 
                 CONCAT(add_rows_, MATRIX_TYPE)(*self, i, i0, -aij);
                 
-                fprintf(step_file, "L%d <- %.3lfL%d %+.3lfL%d\n\n", i + 1, pivot, i + 1, -aij, i0 + 1);
+                fprintf(step_file, "( L%d <- %.3lfL%d %+.3lfL%d )\n\n", i + 1, pivot, i + 1, -aij, i0 + 1);
                 cM(*self, fprint, step_file);
                 //ao encontrar um elemento nao nuloa partir do pivo na linha, 
                 //faz as combinações lineares necessarias para zerar os elementos abaixo do pivo
@@ -681,7 +681,7 @@ static inline cmatrix_error CONCAT(RREF_, MATRIX_TYPE)(MATRIX_TYPE** self, const
         double pivot = (*self)->at[i][j];
         CONCAT(mul_row_, MATRIX_TYPE)(*self, i, 1/pivot); //transforma cada pivo em 1 dividindo a linha por pivot
         
-        fprintf(step_file, "L%d <- (1/%+.3lf)*L%d\n\n", i + 1, pivot, i + 1);
+        fprintf(step_file, "( L%d <- (1/%+.3lf)*L%d )\n\n", i + 1, pivot, i + 1);
         cM(*self, fprint, step_file);
 
         for(int k = i - 1; k >= 0; k--){
@@ -689,7 +689,7 @@ static inline cmatrix_error CONCAT(RREF_, MATRIX_TYPE)(MATRIX_TYPE** self, const
             if(!equal(akj, 0)){
                 CONCAT(add_rows_, MATRIX_TYPE)(*self, k, i, -akj);
                 
-                fprintf(step_file, "L%d <- L%d %+.3lfL%d\n\n", k + 1, k + 1, -akj, i + 1);
+                fprintf(step_file, "( L%d <- L%d %+.3lfL%d )\n\n", k + 1, k + 1, -akj, i + 1);
                 cM(*self, fprint, step_file);
             }
         }
