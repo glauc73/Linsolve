@@ -1,9 +1,14 @@
 #include "generic_matrix/cMatrix.h"
+#include "generic_vector/vector.h"
+#include "hash.h"
 
 typedef enum{
     BASIC_SOLUTION = 0,
     BASIC_FEASIBLE_SOLUTION
 } PPLSolution_t;
+
+extern vector_int* dp;
+extern FILE* step_file;
 
 int64_t next_combination(int64_t x){
     int64_t c = x & -x;
@@ -36,10 +41,11 @@ float diag_mult(cmatrix_double* A){
     return diag_det;
 }
 
-cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, cmatrix_double* Ab, PPLSolution_t bfs){
+cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, cmatrix_double* Ab, PPLSolution_t bfs, hash_table* ht){
     if(!Ab) return CMATRIX_NULL_POINTER;
     size_t n = Ab->cols - 1, m = Ab->rows;
-  
+    step_file = fopen("steps.txt", "w");
+
     cmatrix_double* b = new_cmatrix_double(Ab->rows, 1);
     cM(b, getCol, Ab, n);
     cmatrix_double* v[n];
@@ -60,7 +66,7 @@ cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, 
     
     cmatrix_double* Bb = new_cmatrix_double(m, m + 1);
     cmatrix_double* x = new_cmatrix_double(n, 1);
-    int cntbasics = 0;
+    int cntbasics = 0, cntsol = 1;
     for(int i = 0; i < n_combs; i++){
         cM(Bb, setCol, b, m);
         int cnt = 0;
@@ -68,7 +74,9 @@ cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, 
             if((mask >> j) & 1)    
                 cM(Bb, setCol, v[j], cnt++);
         }
-
+        
+        fprintf(step_file, "==================Solução-%d=================\n\n", cntsol++);
+        cM(Bb, fprint, step_file);
         cM(Bb, rref, Bb);
         if(fabs(diag_mult(Bb)) > 1e-6){
             int top = 0;
@@ -76,10 +84,21 @@ cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, 
                 x->data[j] = ((mask >> j) & 1) ? Bb->data[top*Bb->cols + m] : 0;
                 top += (mask >> j) & 1;
             }
+            
+            for(size_t j = 0; j < n; j++){
+                if(!((mask >> j) & 1)) continue;   // pula as não básicas
+                char name[SIZE_KEY + 1] = {0};
+                get_key(ht, dp->data[j], name);
+                fprintf(step_file, "[%s = %.2lf]\n", name, x->data[j]);
+            }
+
             if(!bfs || cM(x, atLeast, 0)){
                 cM((*solutions)[cntbasics], cpy, x);
-                cntbasics++;
+                cntbasics++;  
             }
+            fputc('\n', step_file);
+        }else{
+           fprintf(step_file, "Solução não básica\n");
         }
         mask = next_combination(mask);
     }
@@ -89,6 +108,7 @@ cmatrix_error generate_all_BS(cmatrix_double*** solutions, size_t* n_solutions, 
 
     cM(Bb, free);
     cM(b, free);
+
     for(size_t i = 0; i < n; i++) cM(v[i], free);
     return CMATRIX_OK;
 }

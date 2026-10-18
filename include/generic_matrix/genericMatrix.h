@@ -67,6 +67,7 @@ typedef struct CONCAT(VTable_, GENERICS_NAME){
     cmatrix_error (*ref)(struct MATRIX_TYPE**, const struct MATRIX_TYPE*);
     cmatrix_error (*identity)(struct MATRIX_TYPE**);
     cmatrix_error (*print)(struct MATRIX_TYPE**);
+    cmatrix_error (*fprint)(struct MATRIX_TYPE**, FILE*);
     cmatrix_error (*hstack)(struct MATRIX_TYPE**, const struct MATRIX_TYPE*, const struct MATRIX_TYPE*);
     cmatrix_error (*apply)(struct MATRIX_TYPE**, GENERICS_TYPE (*)(GENERICS_TYPE, void*), void*);
     cmatrix_error (*transp)(struct MATRIX_TYPE**, struct MATRIX_TYPE*);
@@ -99,6 +100,9 @@ typedef struct CONCAT(VTable_, GENERICS_NAME){
 #define NEW_MATRIX_TYPE CONCAT(new_, MATRIX_TYPE)
 static inline MATRIX_TYPE* NEW_MATRIX_TYPE(size_t rows, size_t cols);
 
+FILE* step_file;
+
+
 static inline cmatrix_error CONCAT(swap_rows_, MATRIX_TYPE)(MATRIX_TYPE** mat, size_t r1, size_t r2){
     if(!mat || !*mat) return CMATRIX_NULL_POINTER;
     if(r1 >= (*mat)->rows || r2 >= (*mat)->rows) return CMATRIX_INDEX_OUT_OF_RANGE;
@@ -112,7 +116,6 @@ static inline cmatrix_error CONCAT(swap_rows_, MATRIX_TYPE)(MATRIX_TYPE** mat, s
     return CMATRIX_OK;
 }
 
-#if !defined(__INTELLISENSE__) && !defined(__clangd__)
 
 static inline cmatrix_error CONCAT(delete_, MATRIX_TYPE)(MATRIX_TYPE** self){ //destrói corretamente a matriz
     if(self == NULL || *self == NULL) return CMATRIX_NULL_POINTER;
@@ -138,6 +141,22 @@ static inline cmatrix_error CONCAT(copy_, MATRIX_TYPE)(MATRIX_TYPE** self, const
     if(!(*self)->was_modified){
         (*self)->det_cache = B->det_cache;
     }
+    return CMATRIX_OK;
+}
+
+static inline cmatrix_error CONCAT(fprint_, MATRIX_TYPE)(MATRIX_TYPE** self, FILE* f){
+    if(!self || !*self) return CMATRIX_NULL_POINTER;
+    
+    for(size_t i = 0; i < (*self)->rows; i++){
+        for(size_t j = 0; j < (*self)->cols; j++){
+            if(fabs((*self)->at[i][j]) < eps) 
+                (*self)->at[i][j] = 0; // resolve o problema do -0.00
+            fprintf(step_file, "%.3lf", (*self)->data[i*(*self)->cols + j]); //printgeneric
+            fputc('\t', f);
+        }
+        fputc('\n', f);
+    } 
+    fputc('\n', f);
     return CMATRIX_OK;
 }
 
@@ -267,7 +286,7 @@ static inline cmatrix_error CONCAT(identity_, MATRIX_TYPE)(MATRIX_TYPE** self){
 static inline int CONCAT(at_least_, MATRIX_TYPE)(MATRIX_TYPE** self, GENERICS_TYPE value){
     size_t n = (*self)->cols * (*self)->rows;
     for(int i = 0; i < n; i++){
-        if((*self)->data[i] < value) return 0;
+        if((*self)->data[i] < value ) return 0;
     }
     return 1;
 }
@@ -463,12 +482,14 @@ static inline cmatrix_error CONCAT(pow_, MATRIX_TYPE)(MATRIX_TYPE** self, const 
     return CMATRIX_OK;
 }
 
-static inline void CONCAT(add_rows_, MATRIX_TYPE)(MATRIX_TYPE* mat, size_t r1, size_t r2, double k){
+static inline void CONCAT(add_rows_, MATRIX_TYPE)(MATRIX_TYPE* mat, size_t dest, size_t from, double k){
     if(!mat){
         printf("ponteiro Nulo\n");
     }
+    if(dest >= mat->rows || from >= mat->rows) return;
+
     for(size_t j = 0; j < mat->cols ; j++)
-        mat->at[r1][j] += (GENERICS_TYPE)(double)(mat->at[r2][j] * k);
+        mat->at[dest][j] += (GENERICS_TYPE)(double)(mat->at[from][j] * k);
 }
 
 static inline void CONCAT(mul_row_, MATRIX_TYPE)(MATRIX_TYPE* mat, size_t row, GENERICS_TYPE k){
@@ -499,14 +520,17 @@ static inline cmatrix_error CONCAT(REF_, MATRIX_TYPE)(MATRIX_TYPE** self, const 
     if(!self || !*self || !mat) return CMATRIX_NULL_POINTER;
     size_t i, j, i0 = 0;
     cM(*self, cpy, mat);
-
-    for(j = 0; j < (*self)->cols; j++){
+    
+        for(j = 0; j < (*self)->cols; j++){
         i = i0; //inicializa a primeira linha para buscar
         while(i < (*self)->rows && equal((*self)->at[i][j], 0)) i++; //procura o primeiro elemento nao nulo na linha
         if(i == (*self)->rows) //se nao encontou, continua
             continue;
         if(i != i0){
             cM(*self, swapRows, i0, i);
+            if(step_file)
+                fprintf(step_file, "L%d <-> L%d\n\n", i0 + 1, i + 1);
+            cM(*self, fprint, step_file);
         }
     
         for(i = i0 + 1; i < (*self)->rows; i++){
@@ -516,13 +540,15 @@ static inline cmatrix_error CONCAT(REF_, MATRIX_TYPE)(MATRIX_TYPE** self, const 
 
                 CONCAT(mul_row_, MATRIX_TYPE)(*self, i, pivot); 
                 CONCAT(add_rows_, MATRIX_TYPE)(*self, i, i0, -aij);
+                
+                fprintf(step_file, "L%d <- %.3lfL%d %+.3lfL%d\n\n", i + 1, pivot, i + 1, -aij, i0 + 1);
+                cM(*self, fprint, step_file);
                 //ao encontrar um elemento nao nuloa partir do pivo na linha, 
                 //faz as combinações lineares necessarias para zerar os elementos abaixo do pivo
             }
         }
         i0++;
     }
-    
     (*self)->was_modified = 1;
     return CMATRIX_OK;
 }
@@ -644,7 +670,7 @@ static inline cmatrix_error CONCAT(RREF_, MATRIX_TYPE)(MATRIX_TYPE** self, const
     if(!self || !*self || !mat) return CMATRIX_NULL_POINTER;
     cM(*self, cpy, mat);
     cM(*self, ref, *self);
-
+     
     size_t j0 = 0, i = 0;
     //aqui aplica o mesmo raciocinio do escalonamento, mas procurando o pivo na linha e zerando todos acima e abaixo dele
     for(i = 0; i < (*self)->rows; i++){
@@ -654,10 +680,17 @@ static inline cmatrix_error CONCAT(RREF_, MATRIX_TYPE)(MATRIX_TYPE** self, const
 
         double pivot = (*self)->at[i][j];
         CONCAT(mul_row_, MATRIX_TYPE)(*self, i, 1/pivot); //transforma cada pivo em 1 dividindo a linha por pivot
+        
+        fprintf(step_file, "L%d <- (1/%+.3lf)*L%d\n\n", i + 1, pivot, i + 1);
+        cM(*self, fprint, step_file);
 
         for(int k = i - 1; k >= 0; k--){
-            if(!equal((*self)->at[k][j], 0)){
-                CONCAT(add_rows_, MATRIX_TYPE)(*self, k, i, -(*self)->at[k][j]);
+            GENERICS_TYPE akj = (*self)->at[k][j];
+            if(!equal(akj, 0)){
+                CONCAT(add_rows_, MATRIX_TYPE)(*self, k, i, -akj);
+                
+                fprintf(step_file, "L%d <- L%d %+.3lfL%d\n\n", k + 1, k + 1, -akj, i + 1);
+                cM(*self, fprint, step_file);
             }
         }
         j0 = j + 1; // como um pivo na coluna seguinte só pode acontecer mais a direita, procuramos a partir da direita de j;
@@ -770,7 +803,7 @@ static inline cmatrix_error CONCAT(print_, MATRIX_TYPE)(MATRIX_TYPE** self){
     return CMATRIX_OK;
 }
 
-#endif
+
 
 //aplica a função func com parametros params a cada elemento de self
 static inline cmatrix_error CONCAT(apply_, MATRIX_TYPE)(MATRIX_TYPE** self, GENERICS_TYPE (*func)(GENERICS_TYPE, void*), void* params){
@@ -799,6 +832,7 @@ static CONCAT(VTable_, GENERICS_NAME) CONCAT(vtable_, GENERICS_NAME) = {
     .ref = CONCAT(REF_, MATRIX_TYPE),
     .det = CONCAT(det_, MATRIX_TYPE),
     .print = CONCAT(print_, MATRIX_TYPE),
+    .fprint = CONCAT(fprint_, MATRIX_TYPE),
     .fill = CONCAT(fill_, MATRIX_TYPE),
     .fill_rand = CONCAT(rand_fill_, MATRIX_TYPE),
     .identity = CONCAT(identity_, MATRIX_TYPE),

@@ -1,3 +1,6 @@
+#ifndef _HASH_H_
+#define _HASH_H_
+
 #define NUMBER_OF_LETTERS 'z' - 'a' + 1
 #define TABLE_SIZE 26*11*11
 #define SIZE_KEY 3
@@ -96,3 +99,5 @@ static inline size_t hash_get_col(hash_table* ht, char* key){
 static inline pair hash_at(hash_table* ht, int index){
     return  ht->buckets[index].term;
 }
+
+#endif

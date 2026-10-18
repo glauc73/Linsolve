@@ -70,8 +70,11 @@ int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn, has
     return 1;
 }
 
+extern FILE* step_file;
+
 int main(int argc, const char* argv[]){
-    int solve;
+    step_file = fopen("steps.txt", "w");
+    int solve = 0;
     PPLSolution_t vbn;
     dp = new_vector_int(0); //guarda os hashs das variaveis distintas da matriz inteira
     hash_table table = new_hash_table();
@@ -95,6 +98,9 @@ int main(int argc, const char* argv[]){
     dp->sort(dp, NULL);
     
     if(solve){
+        fprintf(step_file, "========================Sistema========================\n\n");
+        cM(Ab, fprint, step_file);
+        fprintf(step_file, "=======================================================\n\n");
         cM(Ab, rref, Ab);
         print_solution(Ab, &table);
         cM(Ab, free);
@@ -104,13 +110,14 @@ int main(int argc, const char* argv[]){
     cmatrix_double** x = NULL;
     size_t n_x;
     
-    cmatrix_error err = generate_all_BS(&x, &n_x, Ab, vbn);
+    cmatrix_error err = generate_all_BS(&x, &n_x, Ab, vbn, &table);
     print_basic_solutions(x, n_x, vbn, &table);
     
     for(int i = 0; i < n_x; i++) cM(x[i], free);
     free(x);
     cM(Ab, free);
 fim:
+    fclose(step_file);
     delete_hash_table(&table);
     dp->free(&dp);
     return 0;
