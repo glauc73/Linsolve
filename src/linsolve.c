@@ -48,7 +48,7 @@ int setargs(int argc, const char* argv[], PPLSolution_t* vbn, int* solve_sistem)
 
 int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn, hash_table* ht){
     if(n_x == 0){
-        printf("Sistema sem soluções basicas viáveis\n");
+        printf("******** Sistema sem soluções basicas viáveis ********\n\n\n");
         return 0;
     }
     
@@ -72,6 +72,37 @@ int print_basic_solutions(cmatrix_double** x, size_t n_x, PPLSolution_t vbn, has
 
 extern FILE* step_file;
 
+static int sort_with_columns(cmatrix_double** A, hash_table* ht){
+    if(!A || !*A) return 0;
+    size_t nv = dp->len;
+    if(nv < 2) return 1;
+
+    int original[nv];                       
+    memcpy(original, dp->data, nv * sizeof(int));
+
+    dp->sort(dp, NULL);                         
+
+    cmatrix_double* old = *A;
+    cmatrix_double* sorted = new_cmatrix_double(old->rows, old->cols);
+    if(!sorted) return 0;
+
+    for(size_t k = 0; k < nv; k++){
+        size_t from = 0;                             
+        while(original[from] != dp->data[k]) from++;
+
+        for(size_t i = 0; i < old->rows; i++)
+            sorted->at[i][k] = old->at[i][from];     
+        ht->buckets[dp->data[k]].term.col = k;
+    }
+    for(size_t i = 0; i < old->rows; i++)            
+        sorted->at[i][old->cols - 1] = old->at[i][old->cols - 1];
+
+    cM(old, free);
+    *A = sorted;
+    return 1;
+}
+
+
 int main(int argc, const char* argv[]){
     step_file = fopen("steps.txt", "w");
     int solve = 0;
@@ -84,10 +115,8 @@ int main(int argc, const char* argv[]){
     size_t m, n;
     char input[INPUT_BUFFER_SIZE];
 
-    printf("informe o numero de equações e de variaveis\n");
     scanf("%zu %zu", &m, &n);
     clearbuf();
-    printf("informe o sistema:\n\n");
     
     cmatrix_double* Ab = new_cmatrix_double(m, n + 1);
     
@@ -95,8 +124,9 @@ int main(int argc, const char* argv[]){
         input_data(input);
         if(parse_equation(&table, input, Ab, i) == 0) break;
     }
-    dp->sort(dp, NULL);
-    
+ 
+    sort_with_columns(&Ab, &table);
+
     if(solve){
         fprintf(step_file, "========================Sistema========================\n\n");
         cM(Ab, fprint, step_file);
