@@ -1,0 +1,37 @@
+In file included from src/../include/simplex.h:4,
+                 from src/linsolve.c:9:
+src/../include/parse.h:7:20: error: redefinition of ‘skipspace’
+    7 | static inline void skipspace(char** ptr){
+      |                    ^~~~~~~~~
+In file included from src/linsolve.c:6:
+include/parse.h:7:20: note: previous definition of ‘skipspace’ with type ‘void(char **)’
+    7 | static inline void skipspace(char** ptr){
+      |                    ^~~~~~~~~
+src/../include/parse.h:11:20: error: redefinition of ‘clearbuf’
+   11 | static inline void clearbuf(){
+      |                    ^~~~~~~~
+include/parse.h:11:20: note: previous definition of ‘clearbuf’ with type ‘void()’
+   11 | static inline void clearbuf(){
+      |                    ^~~~~~~~
+src/../include/parse.h:16:19: error: redefinition of ‘extract_unknown’
+   16 | static inline int extract_unknown(char* ptr, char* unknown){
+      |                   ^~~~~~~~~~~~~~~
+include/parse.h:16:19: note: previous definition of ‘extract_unknown’ with type ‘int(char *, char *)’
+   16 | static inline int extract_unknown(char* ptr, char* unknown){
+      |                   ^~~~~~~~~~~~~~~
+src/../include/parse.h:35:20: error: redefinition of ‘put_row_matrix’
+   35 | static inline void put_row_matrix(hash_table* ht, cmatrix_double* A, size_t row, vector_int* dvez, double independent){
+      |                    ^~~~~~~~~~~~~~
+include/parse.h:35:20: note: previous definition of ‘put_row_matrix’ with type ‘void(hash_table *, cmatrix_double *, size_t,  vector_int *, double)’ {aka ‘void(hash_table *, cmatrix_double *, long unsigned int,  vector_int *, double)’}
+   35 | static inline void put_row_matrix(hash_table* ht, cmatrix_double* A, size_t row, vector_int* dvez, double independent){
+      |                    ^~~~~~~~~~~~~~
+src/../include/parse.h:50:19: error: redefinition of ‘parse_equation’
+   50 | static inline int parse_equation(hash_table *ht, char* ptr, cmatrix_double* A,  size_t row){
+      |                   ^~~~~~~~~~~~~~
+include/parse.h:50:19: note: previous definition of ‘parse_equation’ with type ‘int(hash_table *, char *, cmatrix_double *, size_t)’ {aka ‘int(hash_table *, char *, cmatrix_double *, long unsigned int)’}
+   50 | static inline int parse_equation(hash_table *ht, char* ptr, cmatrix_double* A,  size_t row){
+      |                   ^~~~~~~~~~~~~~
+src/../include/simplex.h:6:10: fatal error: cmath: Arquivo ou diretório inexistente
+    6 | #include <cmath>
+      |          ^~~~~~~
+compilation terminated.

@@ -69,6 +69,7 @@ typedef struct CONCAT(VTable_, GENERICS_NAME){
     cmatrix_error (*print)(struct MATRIX_TYPE**);
     cmatrix_error (*fprint)(struct MATRIX_TYPE**, FILE*);
     cmatrix_error (*hstack)(struct MATRIX_TYPE**, const struct MATRIX_TYPE*, const struct MATRIX_TYPE*);
+    cmatrix_error (*vstack)(struct MATRIX_TYPE**, const struct MATRIX_TYPE*, const struct MATRIX_TYPE*);
     cmatrix_error (*apply)(struct MATRIX_TYPE**, GENERICS_TYPE (*)(GENERICS_TYPE, void*), void*);
     cmatrix_error (*transp)(struct MATRIX_TYPE**, struct MATRIX_TYPE*);
     cmatrix_error (*diag)(struct MATRIX_TYPE**, const struct MATRIX_TYPE*); 
@@ -340,28 +341,35 @@ static inline cmatrix_error CONCAT(swap_cols_, MATRIX_TYPE)(MATRIX_TYPE** self, 
 }
 
 static inline cmatrix_error CONCAT(slice_, MATRIX_TYPE)(MATRIX_TYPE** self, MATRIX_TYPE* A, size_t i0, size_t i1, size_t j0, size_t j1){
-    if(!A) return CMATRIX_NULL_POINTER;
-    size_t m = A->rows;   size_t n = A->cols;
-    
-    if(i1 < i0) {size_t tmp = i0, i0 = i1, i1 = tmp;}
-    if(j1 < j0) {size_t tmp = j0, j0 = j1, j1 = tmp;}
-    
-    if(i1 >= m || j1 >= n) return CMATRIX_INDEX_OUT_OF_RANGE;
+    if(!A || !A->data) return CMATRIX_NULL_POINTER;
     if(!self || !*self) return CMATRIX_NULL_POINTER;
-    
+
+    size_t m = A->rows;   size_t n = A->cols;
+
+    if(i1 < i0) {size_t tmp = i0; i0 = i1; i1 = tmp;}
+    if(j1 < j0) {size_t tmp = j0; j0 = j1; j1 = tmp;}
+
+    if(i1 >= m || j1 >= n) return CMATRIX_INDEX_OUT_OF_RANGE;
+
     size_t slice_m = i1 - i0 + 1;
     size_t slice_n = j1 - j0 + 1;
 
-    if((*self)->rows != slice_m || (*self)->cols != slice_n){
-        cM(*self, free);
-        *self = NEW_MATRIX_TYPE(slice_m, slice_n);
+    if(*self != A && (*self)->rows == slice_m && (*self)->cols == slice_n){
+        for(size_t i = 0; i < slice_m; i++)
+            for(size_t j = 0; j < slice_n; j++)
+                (*self)->data[i*slice_n + j] = A->data[(i + i0)*n + j + j0];
+        return CMATRIX_OK;
     }
-    
-    for(size_t i = 0; i < slice_m; i++){
-        for(size_t j = 0; j < slice_n; j++){
-            (*self)->data[i*slice_n + j] = A->data[(i + i0)*n + j + j0];
-        }
-    }
+
+    MATRIX_TYPE* out = NEW_MATRIX_TYPE(slice_m, slice_n);
+    if(!out || !out->data) return CMATRIX_NULL_POINTER;
+
+    for(size_t i = 0; i < slice_m; i++)
+        for(size_t j = 0; j < slice_n; j++)
+            out->data[i*slice_n + j] = A->data[(i + i0)*n + j + j0];
+
+    cM(*self, free);   // se *self == A, A deixa de existir aqui, mas já copiamos tudo
+    *self = out;
     return CMATRIX_OK;
 }
 
@@ -605,7 +613,7 @@ static inline GENERICS_TYPE CONCAT(det_, MATRIX_TYPE)(MATRIX_TYPE** self){
 }
 
 //concatena duas matrizes de mesmo numero de linhas horizontalmente
-static inline cmatrix_error CONCAT(concat_, MATRIX_TYPE)(MATRIX_TYPE** self, const MATRIX_TYPE* A, const MATRIX_TYPE* B){
+static inline cmatrix_error CONCAT(hstack_, MATRIX_TYPE)(MATRIX_TYPE** self, const MATRIX_TYPE* A, const MATRIX_TYPE* B){
     if(!self || !*self || !A || !B) return CMATRIX_NULL_POINTER;
     if(A->rows != B->rows) return CMATRIX_DIMENSION_MISMATCH;
 
@@ -629,6 +637,22 @@ static inline cmatrix_error CONCAT(concat_, MATRIX_TYPE)(MATRIX_TYPE** self, con
     return CMATRIX_OK;
 }
 
+static inline cmatrix_error CONCAT(vstack_, MATRIX_TYPE)(MATRIX_TYPE** self, const MATRIX_TYPE* A, const MATRIX_TYPE* B){
+    if(!self || !*self || !A || !B) return CMATRIX_NULL_POINTER;
+    if(A->cols != B->cols) return CMATRIX_DIMENSION_MISMATCH;
+
+    size_t new_rows = A->rows + B->rows;
+    MATRIX_TYPE* new_matrix = NEW_MATRIX_TYPE(new_rows, A->cols);
+
+    size_t nA = A->rows * A->cols;
+    size_t nB = B->rows * B->cols;
+    memcpy(new_matrix->data, A->data, nA * sizeof(GENERICS_TYPE));
+    memcpy(new_matrix->data + nA, B->data, nB * sizeof(GENERICS_TYPE));
+
+    cM(*self, free);
+    *self = new_matrix;
+    return CMATRIX_OK;
+}
 
 #if !defined(_MATRIX_DOUBLE_) && !defined(_MATRIX_FLOAT_)
 static inline cmatrix_error CONCAT(rand_fill_, MATRIX_TYPE)(MATRIX_TYPE** self, GENERICS_TYPE min, GENERICS_TYPE max){
@@ -839,7 +863,8 @@ static CONCAT(VTable_, GENERICS_NAME) CONCAT(vtable_, GENERICS_NAME) = {
     .fill = CONCAT(fill_, MATRIX_TYPE),
     .fill_rand = CONCAT(rand_fill_, MATRIX_TYPE),
     .identity = CONCAT(identity_, MATRIX_TYPE),
-    .hstack = CONCAT(concat_, MATRIX_TYPE),
+    .hstack = CONCAT(hstack_, MATRIX_TYPE),
+    .vstack = CONCAT(vstack_, MATRIX_TYPE),
     .apply = CONCAT(apply_, MATRIX_TYPE),
     .swapRows = CONCAT(swap_rows_, MATRIX_TYPE),
     .swapCols = CONCAT(swap_cols_, MATRIX_TYPE),

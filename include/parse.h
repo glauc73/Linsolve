@@ -1,6 +1,9 @@
-#include "generic_vector/vector.h"
-#include <ctype.h>
+#ifndef PARSE_H_
+#define PARSE_H_
 
+#include "generic_vector/vector.h"
+#include "generic_matrix/cMatrix.h"
+#include <ctype.h>
 
 vector_int* dp;
 
@@ -32,14 +35,15 @@ static inline int extract_unknown(char* ptr, char* unknown){
 }
 
 //adiciona os coeficientes guardados em ht nos indices dvez e os termos independentes do sistema à matriz A
-static inline void put_row_matrix(hash_table* ht, cmatrix_double* A, size_t row, vector_int* dvez, double independent){
-    for(int j = 0; j < dvez->len; j++){
-        int index = dvez->data[j];
-        pair content = hash_at(ht, index);
+static inline void put_row_matrix(cmatrix_double* A, size_t row, double independent){
+    for(int j = 0; j < dp->len; j++){
+        int index = dp->data[j];
+        pair content = hash_at(&ht, index);
         A->at[row][content.col] = content.coef;
 
-        ht->buckets[index].term.coef = 0;
+        ht.buckets[index].term.coef = 0;
     }
+    
     A->at[row][A->cols - 1] = independent;
 }
 
@@ -47,68 +51,147 @@ static inline void put_row_matrix(hash_table* ht, cmatrix_double* A, size_t row,
 //return:
 //0 -> erro
 //1 -> sucesso
-static inline int parse_equation(hash_table *ht, char* ptr, cmatrix_double* A,  size_t row){
-    //ht é um hash que guarda um termo da soma (coeficiente, coluna)
+
+int s_dvez = 1; 
+
+typedef enum{
+    GE = -1, EQ, LE
+}restrict_t;
+
+static inline int parse_equation(char* ptr, cmatrix_double* A, size_t row, restrict_t* tipo){
     if(!ptr) return 0;
-    double coef = 1, ind; //ind guarda o termo independente
-    static int maxcol = 0; //variavel statica para contar o maximo de colunas
-    int hv_equal = 0; //flag que diz se tem igualdade
-    vector_int* dvez = new_vector_int(64); //vetor que guarda os hashs das incognitas dessa linha
+    char* start = ptr;
+    double coef = 1, ind = 0;
+    static int maxcol = 0;
+    int hv_equal = 0;
+    vector_int* dvez = new_vector_int(64);
+    restrict_t rt = EQ;
+
+    if(row == 0) maxcol = 0; //zera o contador de colunas
 
     while(*ptr){
         skipspace(&ptr);
+        if(!*ptr) break;
+
         if(*ptr == '+' || *ptr == '-'){
-            int x = *ptr - '+';
-            coef = 1 - x; //se *ptr == '+', coef == 1; se *ptr == '-', coef == -1;
+            coef = (*ptr == '+') ? 1 : -1;
             ptr++;
         }
-        else if(isdigit(*ptr)){
-            coef *= strtod(ptr, &ptr); //converte o coeficiente para double e aplica o sinal
+        else if(isdigit(*ptr) || *ptr == '.'){
+            coef *= strtod(ptr, &ptr);
         }
         else if(isalpha(*ptr)){
-            char name[SIZE_KEY + 1] = {0}; //string que guarda o nome de uma incognita
+            char name[SIZE_KEY + 1] = {0};
 
-            if(extract_unknown(ptr, name) == 0) { // coloca a incognita encontrada em name
+            if(extract_unknown(ptr, name) == 0){
                 dvez->free(&dvez);
                 return 0;
             }
 
             int index = hash(name);
-            dvez->push_back(dvez, index); //coloca o indice nas incognitas da vez (da linha)
+            dvez->push_back(dvez, index);
 
-            pair term = {.coef = coef}; // inicializa o termo
+            pair term = {.coef = coef};
 
-            if(hash_contains(ht, name) == 0){ //se nao tiver conteudo nessa chave, entao é uma nova incognita
-                dp->push_back(dp, index); //guarda o hash na dp para acessar coluna -> name em O(1)
-                term.col = maxcol++; //acresenta uma coluna, pois achou nova variavel
-                if(maxcol > A->cols - 1){
-                    printf("ERRO: informou sistema (%zu x %zu) mas passou %d variaveis\n", A->rows, A->cols - 1, maxcol);
+            if(hash_contains(&ht, name) == 0){
+                dp->push_back(dp, index);
+                term.col = maxcol++;
+                if(maxcol > (int)A->cols - 1){
+                    printf("ERRO: informou sistema (%zu x %zu) mas passou %d variaveis\n",
+                           A->rows, A->cols - 1, maxcol);
                     dvez->free(&dvez);
                     return 0;
                 }
             }else{
-                term.col = hash_get_col(ht, name); //se a incognita ja esta la, recebe a coluna dela
+                term.col = hash_get_col(&ht, name);
             }
 
-            hash_update(ht, name, term); //atualiza o conteudo do hash na posição de key
-            ptr++;
+            hash_update(&ht, name, term);
+            ptr += strlen(name);   // consome o nome inteiro (x1, x10...)
         }
-        else if(*ptr == '='){
+        else if(*ptr == '<' || *ptr == '>' || *ptr == '='){
+            if(*ptr == '<') rt = LE;
+            else if(*ptr == '>') rt = GE;
+            else rt = EQ;
+
             ptr++;
+            if(*ptr == '=') ptr++;        // aceita <= e >=
+
             hv_equal++;
-            ind = strtod(ptr, &ptr); //captura o termo independente
+            ind = strtod(ptr, &ptr);      // termo independente
+        }
+        else if(*ptr == '/'){
+            char* back = ptr - 1;
+            while(back > start && (isdigit(*back) || *back == '.')) back--;
+
+            char* end;
+            double den = strtod(ptr + 1, &end);
+            if(end == ptr + 1 || den == 0){
+                printf("Erro: denominador invalido\n");
+                dvez->free(&dvez);
+                return 0;
+            }
+            ptr = end;
+
+            if(hv_equal)
+                ind /= den;
+            else if(isalpha(*back) && dvez->len > 0)
+                ht.buckets[dvez->data[dvez->len - 1]].term.coef /= den;
+            else
+                coef /= den;
         }
         else{
-            ptr++; // ignora qualquer outra coisa
+            ptr++;
         }
     }
-    put_row_matrix(ht, A, row, dvez, ind); //adiciona os coeficientes extraidos na matriz A
-    dvez->free(&dvez);
 
-    if(hv_equal != 1) {
-        printf("Erro: equações lineares possuem exatamente uma igualdade\n");
+    if(hv_equal != 1){
+        printf("Erro: equações lineares possuem exatamente um '=', '<=' ou '>='\n");
+        dvez->free(&dvez);
         return 0;
     }
+
+    put_row_matrix(A, row, ind);
+    *tipo = rt;
+    dvez->free(&dvez);
     return 1;
 }
 
+static inline cmatrix_double* add_slack_columns(cmatrix_double* A, restrict_t* tipo, int* n_a_vars){
+    if(!A || !A->data || !tipo) return NULL;
+
+    size_t m = A->rows, N = A->cols, n = N - 1;
+    int* a_vars = malloc(m*sizeof(int));
+
+    cmatrix_double* X = new_cmatrix_double(m, n);
+    cmatrix_double* B = new_cmatrix_double(m, 1);
+    if(!X || !B) return NULL;
+
+    cM(B, getCol, A, n);
+    cM(X, slice, A, 0, A->rows - 1, 0, n - 1);
+
+    int cont_avar = 0;
+    // acrescenta uma coluna de folga/excesso por restrição não-EQ
+    for(size_t i = 0; i < m; i++){
+        cmatrix_double* S = new_cmatrix_double(m, 1);   // zerada
+        if(tipo[i] != LE) a_vars[cont_avar++] = i;
+        if(tipo[i] == EQ) continue;
+        S->data[i] = (tipo[i] == LE) ? +1.0 : -1.0;
+        
+        cM(X, hstack, X, S);
+        cM(S, free);
+    }
+    *n_a_vars = cont_avar;
+    cmatrix_double* aX = new_cmatrix_double(m, 1);
+    for(int i = 0; i < *n_a_vars; i++){
+        aX->data[a_vars[i]] = 1;
+        cM(X, hstack, X, aX);
+        aX->data[a_vars[i]] = 0;
+    }
+    cM(aX, free);
+    // por último, a coluna b
+    cM(X, hstack, X, B);
+    cM(B, free);
+    return X;
+}
+#endif

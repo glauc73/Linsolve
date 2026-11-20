@@ -19,6 +19,8 @@ typedef struct{
     slots *buckets;
 }hash_table;
 
+hash_table ht;
+
 static inline int hash(char* key){
     if(key[0] < 'a' || key[0] > 'z') return -1;
     int h = 11*11*(key[0] - 'a');
